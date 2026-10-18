@@ -1,0 +1,7 @@
+# Publishes the webapp Service to every cluster in the ClusterSet (via Submariner).
+# Callers on any cluster reach it at: webapp.webapp-dr.svc.clusterset.local:8080
+# It moves with the app on failover/relocate, so the callers' URL never changes.
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceExport
+metadata:
+  name: webapp

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  labels:
+    app: webapp
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+      # Serves the PVC content over HTTP on port 8080
+      - name: web
+        image: registry.access.redhat.com/ubi9/httpd-24:latest
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: data
+          mountPath: /var/www/html
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
+      # Writes one line every 5 s to the PVC, tagged with the node (and so the cluster) it runs on
+      - name: writer
+        image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          while true; do
+            echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC')  written on ${NODE_NAME}" >> /data/log.txt
+            {
+              echo "Served by : ${NODE_NAME}"
+              echo "Time now  : $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              echo "Lines     : $(wc -l < /data/log.txt)"
+              echo "--- last 10 writes ---"
+              tail -10 /data/log.txt
+            } > /data/index.txt
+            sleep 5
+          done
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: webapp-data

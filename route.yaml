@@ -1,0 +1,14 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: webapp
+  labels:
+    app: webapp
+spec:
+  # Site-neutral hostname: the SAME on every cluster, so it never changes on failover
+  host: webapp.dr-demo.nrifi.tamlab.rdu2.redhat.com
+  to:
+    kind: Service
+    name: webapp
+  port:
+    targetPort: http
